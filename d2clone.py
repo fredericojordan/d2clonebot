@@ -65,4 +65,11 @@ async def uberdiablo(ctx):
     )
 
 
-bot.run(os.environ.get("TOKEN"))
+if __name__ == "__main__":
+    token = os.environ.get("TOKEN")
+
+    if token:
+        bot.run(token)
+    else:
+        print("Please set the TOKEN environment variable!")
+        exit(1)
