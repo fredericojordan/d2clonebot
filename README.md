@@ -9,7 +9,7 @@ This is a bot that scrapes the [Diablo Clone Tracker](https://diablo2.io/dclonet
 
 ## Quickstart
 
-Click [this link](`https://discord.com/api/oauth2/authorize?client_id=968258121803915264&permissions=3072&scope=bot`) to add D2 Clone bot to your server!
+Click [this link](https://discord.com/api/oauth2/authorize?client_id=968258121803915264&permissions=3072&scope=bot) to add D2 Clone bot to your server!
 
 ## Running the bot
 
