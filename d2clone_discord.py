@@ -89,12 +89,46 @@ class DCloneTracker:
 
         return updated_statuses
 
-    def text(self):
+    def text(self, region=None, ladder=None, hardcore=None):
         text = ""
         for key, value in self.progress.items():
-            text += f"**[{value}/6]** {Regions.TEXT[key[0]]} {Ladder.TEXT[key[1]]} {Hardcore.TEXT[key[2]]}\n"
+            if filter_realm(key, region, ladder, hardcore):
+                text += f"**[{value}/6]** {Regions.TEXT[key[0]]} {Ladder.TEXT[key[1]]} {Hardcore.TEXT[key[2]]}\n"
         text += "> Data courtesy of diablo2.io"
         return text
+
+
+def filter_realm(key, region, ladder, hardcore):
+    return (
+        (not region or key[0] == region)
+        and (not ladder or key[1] == ladder)
+        and (not hardcore or key[2] == hardcore)
+    )
+
+
+def parse_args(args):
+    region = None
+    ladder = None
+    hardcore = None
+
+    if any("am" in arg for arg in args):
+        region = Regions.AMERICAS
+    if any("eu" in arg for arg in args):
+        region = Regions.EUROPE
+    if any("asi" in arg for arg in args):
+        region = Regions.ASIA
+
+    if any("non" in arg for arg in args):
+        ladder = Ladder.NON_LADDER
+    if any("ladder" in arg for arg in args) and not any("non" in arg for arg in args):
+        ladder = Ladder.LADDER
+
+    if any("hard" in arg for arg in args):
+        hardcore = Hardcore.HARDCORE
+    if any("soft" in arg for arg in args):
+        hardcore = Hardcore.SOFTCORE
+
+    return region, ladder, hardcore
 
 
 class DiscordClient(discord.Client):
@@ -111,7 +145,13 @@ class DiscordClient(discord.Client):
 
         if message.content.startswith("!uberdiablo"):
             self.dclone_tracker.update()
-            await message.channel.send(self.dclone_tracker.text())
+            args = message.content.split(" ")
+            region, ladder, hardcore = parse_args(args[1:])
+            await message.channel.send(
+                self.dclone_tracker.text(
+                    region=region, ladder=ladder, hardcore=hardcore
+                )
+            )
 
     @tasks.loop(seconds=60)
     async def report_status_update(self):

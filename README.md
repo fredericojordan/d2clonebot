@@ -22,6 +22,6 @@ You may also download the code, alter it in any fashion and run the bot on your 
    ```shell
    git clone https://github.com/fredericojordan/d2clonebot.git
    cd d2clonebot
-   python d2clone.py
+   python d2clone_discord.py
    ```
 4. Generate an invite link and add the bot to your Discord server.
