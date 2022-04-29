@@ -3,6 +3,9 @@ import os
 import discord
 import requests
 from discord.ext import tasks
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_URL = "https://diablo2.io/dclone_api.php"
 DISCORD_CHANNEL_ID = int(os.environ.get("DISCORD_CHANNEL_ID", 0))
