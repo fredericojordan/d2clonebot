@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = "https://diablo2.io/dclone_api.php"
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://diablo2.io/dclone_api.php")
 DISCORD_CHANNEL_ID = int(os.environ.get("DISCORD_CHANNEL_ID", 0))
 
 
@@ -54,51 +54,9 @@ def get_diablo_tracker(
         "sd": sort_direction,
     }
     filtered_params = {k: v for k, v in params.items() if v is not None}
-    headers = {"User-Agent": "d2clone"}
-    response = requests.get(BASE_URL, params=filtered_params, headers=headers)
+    headers = {"User-Agent": "d2clone-discord"}
+    response = requests.get(API_BASE_URL, params=filtered_params, headers=headers)
     return response.json() if response.status_code == 200 else None
-
-
-class DCloneTracker:
-    def __init__(self):
-        self.progress = {
-            (Regions.AMERICAS, Ladder.LADDER, Hardcore.HARDCORE): None,
-            (Regions.AMERICAS, Ladder.LADDER, Hardcore.SOFTCORE): None,
-            (Regions.AMERICAS, Ladder.NON_LADDER, Hardcore.HARDCORE): None,
-            (Regions.AMERICAS, Ladder.NON_LADDER, Hardcore.SOFTCORE): None,
-            (Regions.EUROPE, Ladder.LADDER, Hardcore.HARDCORE): None,
-            (Regions.EUROPE, Ladder.LADDER, Hardcore.SOFTCORE): None,
-            (Regions.EUROPE, Ladder.NON_LADDER, Hardcore.HARDCORE): None,
-            (Regions.EUROPE, Ladder.NON_LADDER, Hardcore.SOFTCORE): None,
-            (Regions.ASIA, Ladder.LADDER, Hardcore.HARDCORE): None,
-            (Regions.ASIA, Ladder.LADDER, Hardcore.SOFTCORE): None,
-            (Regions.ASIA, Ladder.NON_LADDER, Hardcore.HARDCORE): None,
-            (Regions.ASIA, Ladder.NON_LADDER, Hardcore.SOFTCORE): None,
-        }
-
-    def update(self):
-        progress_json = get_diablo_tracker()
-        updated_statuses = []
-
-        if not progress_json:
-            return None
-        else:
-            for entry in progress_json:
-                key = (int(entry["region"]), int(entry["ladder"]), int(entry["hc"]))
-                if not self.progress[key] == int(entry["progress"]):
-                    if self.progress[key]:
-                        updated_statuses.append(key)
-                    self.progress[key] = int(entry["progress"])
-
-        return updated_statuses
-
-    def text(self, region=None, ladder=None, hardcore=None):
-        text = ""
-        for key, value in self.progress.items():
-            if filter_realm(key, region, ladder, hardcore):
-                text += f"**[{value}/6]** {Regions.TEXT[key[0]]} {Ladder.TEXT[key[1]]} {Hardcore.TEXT[key[2]]}\n"
-        text += "> Data courtesy of diablo2.io"
-        return text
 
 
 def filter_realm(key, region, ladder, hardcore):
@@ -110,6 +68,9 @@ def filter_realm(key, region, ladder, hardcore):
 
 
 def parse_args(args):
+    if not args:
+        return None, None, None
+
     region = None
     ladder = None
     hardcore = None
@@ -134,10 +95,23 @@ def parse_args(args):
     return region, ladder, hardcore
 
 
-class DiscordClient(discord.Client):
+class D2Clone(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.dclone_tracker = DCloneTracker()
+        self.dclone_status = {
+            (Regions.AMERICAS, Ladder.LADDER, Hardcore.HARDCORE): None,
+            (Regions.AMERICAS, Ladder.LADDER, Hardcore.SOFTCORE): None,
+            (Regions.AMERICAS, Ladder.NON_LADDER, Hardcore.HARDCORE): None,
+            (Regions.AMERICAS, Ladder.NON_LADDER, Hardcore.SOFTCORE): None,
+            (Regions.EUROPE, Ladder.LADDER, Hardcore.HARDCORE): None,
+            (Regions.EUROPE, Ladder.LADDER, Hardcore.SOFTCORE): None,
+            (Regions.EUROPE, Ladder.NON_LADDER, Hardcore.HARDCORE): None,
+            (Regions.EUROPE, Ladder.NON_LADDER, Hardcore.SOFTCORE): None,
+            (Regions.ASIA, Ladder.LADDER, Hardcore.HARDCORE): None,
+            (Regions.ASIA, Ladder.LADDER, Hardcore.SOFTCORE): None,
+            (Regions.ASIA, Ladder.NON_LADDER, Hardcore.HARDCORE): None,
+            (Regions.ASIA, Ladder.NON_LADDER, Hardcore.SOFTCORE): None,
+        }
 
     async def on_ready(self):
         self.report_status_update.start()
@@ -147,25 +121,24 @@ class DiscordClient(discord.Client):
             return
 
         if message.content.startswith("!uberdiablo"):
-            self.dclone_tracker.update()
-            args = message.content.split(" ")
-            region, ladder, hardcore = parse_args(args[1:])
-            await message.channel.send(
-                self.dclone_tracker.text(
-                    region=region, ladder=ladder, hardcore=hardcore
-                )
+            self.update_dclone_status()
+            args = message.content.split(" ")[1:]
+            region, ladder, hardcore = parse_args(args)
+            text_message = self.status_text(
+                region=region, ladder=ladder, hardcore=hardcore
             )
+            await message.channel.send(text_message)
 
     @tasks.loop(seconds=60)
     async def report_status_update(self):
-        updated_statuses = self.dclone_tracker.update()
+        updated_statuses = self.update_dclone_status()
 
         if not updated_statuses or not DISCORD_CHANNEL_ID:
             return
 
         message = ""
         for key in updated_statuses:
-            progress = self.dclone_tracker.progress[key]
+            progress = self.dclone_status[key]
             message += f"**[{progress}/6]** {Regions.TEXT[key[0]]} {Ladder.TEXT[key[1]]} {Hardcore.TEXT[key[2]]} DClone updated\n"
 
         message += "> Data courtesy of diablo2.io"
@@ -176,12 +149,36 @@ class DiscordClient(discord.Client):
     async def setup(self):
         await self.wait_until_ready()
 
+    def update_dclone_status(self):
+        progress_json = get_diablo_tracker()
+        updated_statuses = []
+
+        if not progress_json:
+            return None
+        else:
+            for entry in progress_json:
+                key = (int(entry["region"]), int(entry["ladder"]), int(entry["hc"]))
+                if not self.dclone_status[key] == int(entry["progress"]):
+                    if self.dclone_status[key]:
+                        updated_statuses.append(key)
+                    self.dclone_status[key] = int(entry["progress"])
+
+        return updated_statuses
+
+    def status_text(self, region=None, ladder=None, hardcore=None):
+        text = ""
+        for key, value in self.dclone_status.items():
+            if filter_realm(key, region, ladder, hardcore):
+                text += f"**[{value}/6]** {Regions.TEXT[key[0]]} {Ladder.TEXT[key[1]]} {Hardcore.TEXT[key[2]]}\n"
+        text += "> Data courtesy of diablo2.io"
+        return text
+
 
 if __name__ == "__main__":
     token = os.environ.get("DISCORD_TOKEN")
 
     if token:
-        client = DiscordClient(intents=discord.Intents.default())
+        client = D2Clone(intents=discord.Intents.default())
         client.run(token)
     else:
         print("Please set the DISCORD_TOKEN environment variable!")
