@@ -1,5 +1,6 @@
 # Diablo II: Resurrected - Diablo Clone Tracker Discord Bot
 
+[![Add to Discord](https://img.shields.io/static/v1?label=&message=Add%20to%20Discord&color=7289da&logo=discord&labelColor=424549)](https://discord.com/api/oauth2/authorize?client_id=968258121803915264&permissions=3072&scope=bot)
 [![powered-by-diablo2.io](https://img.shields.io/badge/powered%20by-diablo2.io-green)](https://diablo2.io/)
 
 This is a bot that scrapes the [Diablo Clone Tracker](https://diablo2.io/dclonetracker.php) API and offers some functionalities on Discord:
