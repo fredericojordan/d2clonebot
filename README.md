@@ -5,7 +5,7 @@
 
 This is a bot that scrapes the [Diablo Clone Tracker](https://diablo2.io/dclonetracker.php) API and offers some functionalities on Discord:
 
-1. `!uberdiablo` command for Diablo Clone tracker verification.
+1. `/uberdiablo` command for Diablo Clone tracker verification.
 2. Proactive reports when the tracker progresses.
 
 ## Quickstart

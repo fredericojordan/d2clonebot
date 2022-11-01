@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import discord
 import requests
@@ -96,8 +97,9 @@ def parse_args(args):
 
 
 class D2Clone(discord.Client):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *, intents: discord.Intents):
+        super().__init__(intents=intents)
+        self.command_tree = discord.app_commands.CommandTree(self)
         self.dclone_status = {
             (Regions.AMERICAS, Ladder.LADDER, Hardcore.HARDCORE): None,
             (Regions.AMERICAS, Ladder.LADDER, Hardcore.SOFTCORE): None,
@@ -116,18 +118,8 @@ class D2Clone(discord.Client):
     async def on_ready(self):
         self.report_status_update.start()
 
-    async def on_message(self, message):
-        if message.author == self.user:
-            return
-
-        if message.content.startswith("!uberdiablo"):
-            self.update_dclone_status()
-            args = message.content.split(" ")[1:]
-            region, ladder, hardcore = parse_args(args)
-            text_message = self.status_text(
-                region=region, ladder=ladder, hardcore=hardcore
-            )
-            await message.channel.send(text_message)
+    async def setup_hook(self):
+        await self.command_tree.sync()
 
     @tasks.loop(seconds=60)
     async def report_status_update(self):
@@ -179,6 +171,20 @@ if __name__ == "__main__":
 
     if token:
         client = D2Clone(intents=discord.Intents.default())
+
+        @client.command_tree.command()
+        @discord.app_commands.describe(filters="Realm keyword filters")
+        async def uberdiablo(
+            interaction: discord.Interaction, filters: Optional[str] = ""
+        ):
+            """Report Diablo Clone status"""
+            client.update_dclone_status()
+            region, ladder, hardcore = parse_args(filters.split())
+            text_message = client.status_text(
+                region=region, ladder=ladder, hardcore=hardcore
+            )
+            await interaction.response.send_message(text_message)
+
         client.run(token)
     else:
         print("Please set the DISCORD_TOKEN environment variable!")
