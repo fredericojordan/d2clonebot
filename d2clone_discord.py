@@ -173,13 +173,13 @@ if __name__ == "__main__":
         client = D2Clone(intents=discord.Intents.default())
 
         @client.command_tree.command()
-        @discord.app_commands.describe(filters="Realm keyword filters")
+        @discord.app_commands.describe(realm_filters="Realm keyword filters (e.g 'non-ladder softcore americas')")
         async def uberdiablo(
-            interaction: discord.Interaction, filters: Optional[str] = ""
+            interaction: discord.Interaction, realm_filters: Optional[str] = ""
         ):
             """Report Diablo Clone status"""
             client.update_dclone_status()
-            region, ladder, hardcore = parse_args(filters.split())
+            region, ladder, hardcore = parse_args(realm_filters.split())
             text_message = client.status_text(
                 region=region, ladder=ladder, hardcore=hardcore
             )
